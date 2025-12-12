@@ -43,7 +43,7 @@ Ideal for extension into full-scale enterprise document intelligence systems.
 ```
 PDF_bot/
 │
-├── streamlit_app.py          # Streamlit UI (upload, query, render)
+├── app.py          # Streamlit UI (upload, query, render)
 ├── requirements.txt          # Dependency list
 ├── .env                      # API keys (excluded from Git)
 │
@@ -84,7 +84,7 @@ GROQ_API_KEY=gsk_your_actual_key_here
 ```
 **Run the App:**
 ```bash
-streamlit run streamlit_app.py
+streamlit run app.py
 ```
 
 ## 💡 How It Works (The Workflow)
