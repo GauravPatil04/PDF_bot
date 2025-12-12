@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 from app.PDF_loader import pdf_bytes_to_documents
 from app.splitter import split_documents
 from app.vectorstore_DB import create_inmemory_vectorstore
@@ -6,78 +7,116 @@ from app.RAG_system_pipeline import build_rag_chain
 
 # --- UI Setup ---
 st.set_page_config(page_title="PDF RAG Question Answering", layout="wide")
-st.title("📘 PDF-based Question Answering AI")
-st.markdown("Upload a PDF, process it, and then ask questions.")
+st.title("📗 PDF-based Question Answering AI")
+st.markdown("Upload a PDF — processing starts automatically, then ask questions.😊")
 
-# --- Session State Initialization ---
+# --- Session State ---
 if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = None
-if "processed_file" not in st.session_state:
-    st.session_state.processed_file = None
 
-# --- Main Layout ---
-# 1. File Upload
+if "processed_file_bytes" not in st.session_state:
+    st.session_state.processed_file_bytes = None
+
+if "question_input" not in st.session_state:
+    st.session_state.question_input = ""
+
+
+# PDF Upload
 uploaded_pdf = st.file_uploader("Upload a PDF file", type=["pdf"])
 
-if uploaded_pdf is not None:
-    st.success(f"PDF uploaded successfully")
+# Reset state if no file
+if uploaded_pdf is None:
+    st.session_state.vectorstore = None
+    st.session_state.processed_file_bytes = None
+    st.session_state.question_input = ""
+else:
+    uploaded_pdf.seek(0)
+    current_bytes = uploaded_pdf.read()
 
-# 2. Processing
-disable_process_button = (uploaded_pdf is None)
+    # Detect NEW file upload → trigger automatic processing
+    if st.session_state.processed_file_bytes != current_bytes:
 
-if st.button("Process PDF (Embed & Store)", disabled=disable_process_button):
-    # Prevent re-processing if user clicks multiple times on the same file
-    if st.session_state.processed_file == uploaded_pdf.name:
-        st.warning("This PDF is already processed.")
-    else:
-        with st.spinner("Processing PDF..."):
-            # A. Read bytes directly from the uploaded file object
-            # We reset the pointer to the start of the file just in case
-            uploaded_pdf.seek(0)
-            pdf_bytes = uploaded_pdf.read()
-                
-            # B. Load (Extract text from bytes)
-            raw_docs = pdf_bytes_to_documents(pdf_bytes, source_name=uploaded_pdf.name)
-                
+        st.session_state.question_input = ""  # clear question input
+
+        progress_text = "Starting PDF processing..."
+        progress_bar = st.progress(0, text=progress_text)
+
+        try:
+            # Step 1: Extract Text  
+            progress_bar.progress(10, text="Extracting text from PDF...")
+            raw_docs = pdf_bytes_to_documents(current_bytes, source_name="uploaded_pdf")
+
             if not raw_docs:
-                st.error("Could not extract text from this PDF.")
+                progress_bar.empty()
+                st.error("❌ Could not extract text from this PDF.")
             else:
-                # C. Splitting
+                # Step 2: Split into chunks
+                progress_bar.progress(40, text="Splitting document into clean chunks...")
                 chunks = split_documents(raw_docs)
-                st.write(f"Document split into {len(chunks)} chunks.")
-                
-                # D. Embed & Store (In-Memory)
-                vectorstore = create_inmemory_vectorstore(chunks)
-                    
-                # Save to Session State
-                st.session_state.vectorstore = vectorstore
-                st.session_state.processed_file = uploaded_pdf.name
-                    
-                st.success("PDF processed! Ready for questions.")    
 
-# 3. Q&A
+                # Sanitize chunks to avoid tokenizer errors
+                chunks = [
+                    doc for doc in chunks
+                    if doc.page_content
+                    and isinstance(doc.page_content, str)
+                    and doc.page_content.strip()
+                ]
+
+                if not chunks:
+                    progress_bar.empty()
+                    st.error("❌ No valid text found after splitting.")
+                else:
+
+                    # Step 3: Create Embeddings
+                    progress_bar.progress(75, text="Building embeddings & storing in memory...")
+                    vectorstore = create_inmemory_vectorstore(chunks)
+
+                    # Step 4: Update session
+                    st.session_state.vectorstore = vectorstore
+                    st.session_state.processed_file_bytes = current_bytes
+
+                    # Complete
+                    progress_bar.progress(100, text="🎉 Processing Complete!")
+                    time.sleep(0.4)
+                    progress_bar.empty()
+
+                    st.success("PDF processed successfully. You may now ask questions!")
+
+        except Exception as e:
+            progress_bar.empty()
+            st.error(f"Processing failed: {e}")
+
+    else:
+        st.success("PDF already processed. Ready to answer your questions.")
+
+
+# Q&A
 st.subheader("Ask Questions from the PDF")
-query = st.text_input("Enter your question")
+
+query = st.text_input("Enter your question", key="question_input")
 
 if st.button("Get Answer", type="primary"):
-    if not query:
+    if not query.strip():
         st.error("Please enter a question.")
+    elif uploaded_pdf is None:
+        st.error("⚠️ Upload a PDF first.")
     elif st.session_state.vectorstore is None:
-         st.error("⚠️ Please process a PDF file first before asking questions.")
+        st.error("⚠️ PDF is still processing. Please wait.")
     else:
         try:
-            with st.spinner("Retrieving answer..."):
-                # Pass the in-memory vectorstore to the pipeline
+            with st.spinner("Generating answer..."):
                 qa_chain = build_rag_chain(st.session_state.vectorstore)
-                output = qa_chain({"query": query})
+                output = qa_chain.invoke({"query": query})
 
-            st.write("### Answer:")
+            st.write("### 🧑‍🏫 Answer")
             st.info(output["result"])
 
             st.write("### 📚 Sources:")
             for i, src in enumerate(output["source_documents"], 1):
                 snippet = src.page_content.replace('\n', ' ').strip()[:150]
-                st.markdown(f"**Source {i}:** Page {src.metadata.get('page', 'Unknown')} - *{snippet}...*")
-                
+                st.markdown(
+                    f"**Source {i}:** Page {src.metadata.get('page', 'Unknown')} - *{snippet}...*"
+                )
+
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Error: {e}")
