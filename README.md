@@ -5,6 +5,10 @@ Users can upload a PDF and interact with its content using advanced AI — with 
 
 This system integrates **Groq Llama 3.3 70B**, **ChromaDB**, and **state-of-the-art embedding models** to deliver fast, accurate, and reliable document understanding.
 
+🌐Visit my project website: [PDF_bot](https://pdfbot-alit4bjkyyblxxerbmqxjr.streamlit.app/)
+
+📺Video link: [YouTube](https://youtu.be/9psGvn9Pqpc?si=FwMYgZlgCI8DHIOL)
+
 ---
 
 ## 🧩 Key Highlights
@@ -43,21 +47,24 @@ Ideal for extension into full-scale enterprise document intelligence systems.
 ```
 PDF_bot/
 │
-├── app.py          # Streamlit UI (upload, query, render)
-├── requirements.txt          # Dependency list
-├── .env                      # API keys (excluded from Git)
+├── app.py                   # Streamlit UI (upload, query, render)
+├── requirements.txt         # Dependency list
+├── .env                     # API keys (excluded from Git)
 │
-├── images/                   # Assets for README/UI
-│   └── UI.png                # UI Image
+├── images/                  # Assets for README/UI
+│   └── UI.png               # UI screenshot
 │
-└── app/                      # Core application logic
-    ├── __init__.py
-    ├── config.py             # Model, API keys, and env config
-    ├── PDF_loader.py         # PDF → text extraction
-    ├── splitter.py           # Chunking logic
-    ├── text_embeddings.py    # Embedding model loader
-    ├── vectorstore_DB.py     # RAM-only ChromaDB instance
-    └── RAG_system_pipeline.py# Retrieval + LLM generation
+├── app/                     # Core application logic
+│   ├── __init__.py
+│   ├── config.py            # Model, API keys, and environment config
+│   ├── pdf_loader.py        # PDF → text extraction
+│   ├── splitter.py          # Document chunking logic
+│   ├── text_embeddings.py   # Embedding model loader
+│   ├── vectorstore_db.py    # In-memory ChromaDB instance
+│   └── rag_pipeline.py      # Retrieval + LLM generation pipeline
+│
+└── Summary.pdf              # Project summary document
+
 ```
 
 ---
