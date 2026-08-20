@@ -10,7 +10,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "YOUR_KEY_HERE")
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 # Groq model name 
-GROQ_MODEL = "llama-3.3-70b-versatile" 
+GROQ_MODEL = "openai/gpt-oss-120b" 
 
 # Retrieval parameters
 RETRIEVAL_K = 3
